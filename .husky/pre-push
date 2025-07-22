@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-push checks..."
+
+# Build the project
+echo "🔨 Building Next.js project..."
+npm run build
+
+if [ $? -ne 0 ]; then
+  echo "❌ Next.js build failed! Fix build errors before pushing."
+  exit 1
+fi
+
+
+echo "✅ All checks passed! Pushing to GitHub..."
