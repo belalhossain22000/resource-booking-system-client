@@ -1,4 +1,4 @@
-import { Booking, BookingStatus } from "@/types/booking"
+import {  BookingStatus } from "@/types/booking"
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 

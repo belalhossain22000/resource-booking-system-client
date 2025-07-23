@@ -12,12 +12,7 @@ import { CalendarDays, Clock, Search, Loader2, CheckCircle, AlertTriangle, MapPi
 import { useCheckResourceAvailabilityMutation, useGetAllResourcesQuery } from "@/redux/api/resourceApi"
 
 // Type definitions
-interface Resource {
-  id: string
-  name: string
-  createdAt: string
-  updatedAt: string
-}
+
 
 interface AvailableSlot {
   start: string
@@ -34,13 +29,6 @@ interface AvailabilityResponse {
   }
 }
 
-interface ResourcesResponse {
-  success: boolean
-  message: string
-  data: {
-    data: Resource[]
-  }
-}
 
 const DURATION_OPTIONS = [
   { value: "15", label: "15 minutes" },

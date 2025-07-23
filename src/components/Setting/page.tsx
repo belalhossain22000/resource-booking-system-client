@@ -31,8 +31,7 @@ export function SettingsPage() {
   // Extract resources array from API response with optional chaining
   const resources: Resource[] = resourcesResponse?.data?.data || []
   const totalResources = resourcesResponse?.data?.meta?.total || resources?.length || 0
-  const currentPage = resourcesResponse?.data?.meta?.page || 1
-  const limit = resourcesResponse?.data?.meta?.limit || 10
+  
 
   // Calculate active bookings for each resource (excluding cancelled)
   const getActiveBookingsCount = (resource: Resource) => {
