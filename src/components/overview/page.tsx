@@ -5,7 +5,7 @@
 import { Button } from "@/components/ui/button"
 import { CalendarDays, Clock, MapPin, Trash2, TrendingUp, Loader2 } from "lucide-react"
 import { Badge } from "../ui/badge"
-import { useDeleteBookingMutation, useGetBookingsQuery, useGetBookingStatsQuery, useGetUpcomingAndActiveBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
+import {  useGetBookingStatsQuery, useGetUpcomingAndActiveBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 import { formatDateTime } from "@/lib/utils"
 import { Alert, AlertDescription } from "../ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"

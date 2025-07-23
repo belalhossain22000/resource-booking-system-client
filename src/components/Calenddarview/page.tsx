@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Trash2, Loader2, Calendar, Clock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useDeleteBookingMutation, useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
+import { useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8) // 8 AM to 9 PM

@@ -17,7 +17,7 @@ import { useCreateBookingMutation, useGetBookingsQuery } from "@/redux/api/booki
 
 
 export function NewBookingPage() {
-  const { data: resourcesResponse, isLoading: isLoadingResources, error } = useGetAllResourcesQuery({})
+  const { data: resourcesResponse, isLoading: isLoadingResources } = useGetAllResourcesQuery({})
   const { data = [] } = useGetBookingsQuery({})
 
   const [createBooking, { isLoading: isSubmitting }] = useCreateBookingMutation()
@@ -78,8 +78,8 @@ export function NewBookingPage() {
 
       // Hide success message after 3 seconds
       setTimeout(() => setSubmitSuccess(false), 3000)
-    } catch (error) {
-      console
+    } catch (error:any) {
+      console.error("Failed to create booking:", error)
       setErrors(["Failed to create booking. Please try again."])
     }
   }

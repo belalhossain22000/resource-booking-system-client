@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Clock, MapPin, Trash2, Filter, Search, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useDeleteBookingMutation, useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
+import {  useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 import { formatDateTime, formatDuration, getBookingStatus, getStatusColor } from "@/lib/utils"
 
 // Type definitions based on your API response
@@ -32,11 +32,7 @@ interface Booking {
   resource: Resource
 }
 
-interface BookingsResponse {
-  success: boolean
-  message: string
-  data: Booking[]
-}
+
 
 export function BookingsPage() {
   const { data: bookingsResponse, isLoading, error } = useGetBookingsQuery({})
