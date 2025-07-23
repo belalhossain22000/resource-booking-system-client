@@ -12,27 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Search, Filter, X } from "lucide-react"
 import { useGetAllResourcesQuery } from "@/redux/api/resourceApi"
+import { Resource } from "@/types/resources"
 
 
 // Type definitions
-interface ResourceBooking {
-  id: string
-  resourceId: string
-  startTime: string
-  endTime: string
-  requestedBy: string
-  status: string
-  createdAt: string
-  updatedAt: string
-}
 
-interface Resource {
-  id: string
-  name: string
-  createdAt: string
-  updatedAt: string
-  bookings: ResourceBooking[]
-}
 
 export function ResourcesPage() {
   const { data: resourcesResponse, isLoading: isLoadingResources, error } = useGetAllResourcesQuery({})

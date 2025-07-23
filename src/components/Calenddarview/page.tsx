@@ -6,17 +6,38 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Trash2, Loader2, Calendar, Clock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useDeleteBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
+import { useDeleteBookingMutation, useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8) // 8 AM to 9 PM
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
+// Type definitions
+interface Booking {
+  id: string
+  resourceId: string
+  startTime: string
+  endTime: string
+  requestedBy: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  resource: {
+    id: string
+    name: string
+    createdAt: string
+    updatedAt: string
+  }
+}
+
 export function CalendarPage() {
-  const { data: bookings = [], isLoading, error } = useGetBookingsQuery()
-  const [deleteBooking, { isLoading: isDeleting }] = useDeleteBookingMutation()
+  const { data: bookingsResponse, isLoading, error } = useGetBookingsQuery({})
+   const [updateBookingStatus, { isLoading: isCanceling }] = useUpdateBookingStatusMutation()
   const [currentWeek, setCurrentWeek] = useState(new Date())
+
+  // Extract bookings array from API response
+  const bookings: Booking[] = bookingsResponse?.data || []
 
   // Get the start of the current week (Monday)
   const getWeekStart = (date: Date) => {
@@ -37,7 +58,6 @@ export function CalendarPage() {
   const weekBookings = useMemo(() => {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 7)
-
     return bookings.filter((booking) => {
       const bookingDate = new Date(booking.startTime)
       return bookingDate >= weekStart && bookingDate < weekEnd
@@ -46,30 +66,25 @@ export function CalendarPage() {
 
   // Group bookings by day and hour
   const bookingsByDayAndHour = useMemo(() => {
-    const grouped: Record<string, Record<number, typeof bookings>> = {}
-
+    const grouped: Record<string, Record<number, Booking[]>> = {}
     weekDays.forEach((day) => {
       const dayKey = day.toDateString()
       grouped[dayKey] = {}
-
       HOURS.forEach((hour) => {
         grouped[dayKey][hour] = weekBookings.filter((booking) => {
           const bookingDate = new Date(booking.startTime)
           const bookingStartHour = bookingDate.getHours()
           const bookingEndHour = new Date(booking.endTime).getHours()
-
           return bookingDate.toDateString() === dayKey && bookingStartHour <= hour && bookingEndHour > hour
         })
       })
     })
-
     return grouped
   }, [weekBookings, weekDays])
 
   // Group bookings by day for mobile view
   const bookingsByDay = useMemo(() => {
-    const grouped: Record<string, typeof bookings> = {}
-
+    const grouped: Record<string, Booking[]> = {}
     weekDays.forEach((day) => {
       const dayKey = day.toDateString()
       grouped[dayKey] = weekBookings.filter((booking) => {
@@ -77,7 +92,6 @@ export function CalendarPage() {
         return bookingDate.toDateString() === dayKey
       })
     })
-
     return grouped
   }, [weekBookings, weekDays])
 
@@ -90,7 +104,6 @@ export function CalendarPage() {
   const formatWeekRange = () => {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6)
-
     return `${weekStart.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -110,7 +123,6 @@ export function CalendarPage() {
     const now = new Date()
     const start = new Date(startTime)
     const end = new Date(endTime)
-
     if (now > end) return "past"
     if (now >= start && now <= end) return "ongoing"
     return "upcoming"
@@ -118,7 +130,7 @@ export function CalendarPage() {
 
   const handleDelete = async (bookingId: string) => {
     try {
-      await deleteBooking(bookingId).unwrap()
+      await updateBookingStatus({id:bookingId, status: { status: "cancelled" } }).unwrap()
     } catch (error) {
       console.error("Failed to delete booking:", error)
     }
@@ -165,7 +177,6 @@ export function CalendarPage() {
                 <p className="text-gray-300 font-medium mt-1">{formatWeekRange()}</p>
               </div>
             </div>
-
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -196,7 +207,6 @@ export function CalendarPage() {
             </div>
           </div>
         </CardHeader>
-
         <CardContent className="p-0 bg-white">
           {/* Desktop Calendar View */}
           <div className="hidden lg:block">
@@ -220,7 +230,6 @@ export function CalendarPage() {
                     </div>
                   ))}
                 </div>
-
                 {/* Time Slots */}
                 {HOURS.map((hour) => (
                   <div key={hour} className="grid grid-cols-8 border-b border-gray-300 min-h-[100px]">
@@ -230,12 +239,10 @@ export function CalendarPage() {
                         {hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                       </div>
                     </div>
-
                     {/* Day Columns */}
                     {weekDays.map((day) => {
                       const dayKey = day.toDateString()
                       const hourBookings = bookingsByDayAndHour[dayKey]?.[hour] || []
-
                       return (
                         <div
                           key={`${dayKey}-${hour}`}
@@ -245,7 +252,6 @@ export function CalendarPage() {
                         >
                           {hourBookings.map((booking) => {
                             const status = getBookingStatus(booking.startTime, booking.endTime)
-
                             return (
                               <div
                                 key={booking.id}
@@ -258,7 +264,7 @@ export function CalendarPage() {
                                 }`}
                               >
                                 <div className="space-y-1">
-                                  <div className="font-bold text-sm truncate">{booking.resource}</div>
+                                  <div className="font-bold text-sm truncate">{booking.resource.name}</div>
                                   <div className="text-xs font-medium truncate">{booking.requestedBy}</div>
                                   <div className="text-xs">
                                     {new Date(booking.startTime).toLocaleTimeString("en-US", {
@@ -278,16 +284,15 @@ export function CalendarPage() {
                                     {status === "ongoing" ? "● LIVE" : status.toUpperCase()}
                                   </Badge>
                                 </div>
-
                                 {/* Delete Button */}
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleDelete(booking.id)}
-                                  disabled={isDeleting}
+                                  disabled={isCanceling}
                                   className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all bg-red-500 hover:bg-red-600 text-white rounded-full"
                                 >
-                                  {isDeleting ? (
+                                  {isCanceling ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
                                   ) : (
                                     <Trash2 className="h-3 w-3" />
@@ -310,7 +315,6 @@ export function CalendarPage() {
             {weekDays.map((day, index) => {
               const dayKey = day.toDateString()
               const dayBookings = bookingsByDay[dayKey] || []
-
               return (
                 <Card
                   key={dayKey}
@@ -338,7 +342,6 @@ export function CalendarPage() {
                     ) : (
                       dayBookings.map((booking) => {
                         const status = getBookingStatus(booking.startTime, booking.endTime)
-
                         return (
                           <div
                             key={booking.id}
@@ -352,7 +355,7 @@ export function CalendarPage() {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 space-y-2">
-                                <div className="font-bold">{booking.resource}</div>
+                                <div className="font-bold">{booking.resource.name}</div>
                                 <div className="text-sm">
                                   {new Date(booking.startTime).toLocaleTimeString("en-US", {
                                     hour: "2-digit",
@@ -381,10 +384,10 @@ export function CalendarPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDelete(booking.id)}
-                                disabled={isDeleting}
+                                disabled={isCanceling}
                                 className="opacity-0 group-hover:opacity-100 transition-all bg-red-500 hover:bg-red-600 text-white rounded-full"
                               >
-                                {isDeleting ? (
+                                {isCanceling ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <Trash2 className="h-4 w-4" />
@@ -405,3 +408,5 @@ export function CalendarPage() {
     </div>
   )
 }
+
+export default CalendarPage
