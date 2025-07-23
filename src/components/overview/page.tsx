@@ -9,6 +9,7 @@ import {  useGetBookingStatsQuery, useGetUpcomingAndActiveBookingsQuery, useUpda
 import { formatDateTime } from "@/lib/utils"
 import { Alert, AlertDescription } from "../ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
+import PageLoading from "../shared/PageLoading"
 
 export function OverviewPage() {
   
@@ -32,7 +33,7 @@ export function OverviewPage() {
   if ( isStatsLoading || isUpcomingAndActiveBookingsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <PageLoading/>
         <span className="ml-2">Loading bookings...</span>
       </div>
     )

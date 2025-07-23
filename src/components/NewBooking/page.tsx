@@ -13,6 +13,7 @@ import { validateBooking } from "@/lib/utils"
 import { BOOKING_RULES } from "@/constants/resources"
 import { useGetAllResourcesQuery } from "@/redux/api/resourceApi"
 import { useCreateBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
+import PageLoading from "../shared/PageLoading"
 
 // Type definitions
 interface Resource {
@@ -178,7 +179,7 @@ export function NewBookingPage() {
   if (isLoadingResources) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <PageLoading />
         <span className="ml-2">Loading resources...</span>
       </div>
     )

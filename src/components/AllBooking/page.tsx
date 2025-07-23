@@ -11,6 +11,7 @@ import { CalendarDays, Clock, MapPin, Trash2, Filter, Search, Loader2 } from "lu
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 import { formatDateTime, formatDuration, getBookingStatus, getStatusColor } from "@/lib/utils"
+import PageLoading from "../shared/PageLoading"
 
 // Type definitions based on your API response
 interface Resource {
@@ -153,7 +154,7 @@ export function BookingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <PageLoading/>
         <span className="ml-2">Loading bookings...</span>
       </div>
     )

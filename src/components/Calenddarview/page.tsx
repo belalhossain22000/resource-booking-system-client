@@ -50,6 +50,8 @@ export function CalendarPage() {
     isLoading: boolean
     error: any
   }
+
+  console.log(bookingsResponse);
   const [updateBookingStatus, { isLoading: isCanceling }] = useUpdateBookingStatusMutation()
   const [currentWeek, setCurrentWeek] = useState(new Date())
 
@@ -251,9 +253,8 @@ export function CalendarPage() {
                   {weekDays.map((day, index) => (
                     <div
                       key={day.toDateString()}
-                      className={`p-4 text-center font-bold border-r border-black transition-all ${
-                        isToday(day) ? "bg-black text-white" : "bg-gray-100 text-black hover:bg-gray-200"
-                      }`}
+                      className={`p-4 text-center font-bold border-r border-black transition-all ${isToday(day) ? "bg-black text-white" : "bg-gray-100 text-black hover:bg-gray-200"
+                        }`}
                     >
                       <div className="text-sm font-medium">{DAYS[index]}</div>
                       <div className="text-xl font-bold mt-1">{day.getDate()}</div>
@@ -276,22 +277,20 @@ export function CalendarPage() {
                       return (
                         <div
                           key={`${dayKey}-${hour}`}
-                          className={`relative p-2 border-r border-gray-300 min-h-[100px] transition-all ${
-                            isToday(day) ? "bg-gray-50" : "bg-white hover:bg-gray-50"
-                          }`}
+                          className={`relative p-2 border-r border-gray-300 min-h-[100px] transition-all ${isToday(day) ? "bg-gray-50" : "bg-white hover:bg-gray-50"
+                            }`}
                         >
                           {hourBookings.map((booking) => {
                             const status = getBookingStatus(booking?.startTime || "", booking?.endTime || "")
                             return (
                               <div
                                 key={booking?.id}
-                                className={`group relative mb-2 p-3 rounded-lg border-2 transition-all hover:scale-105 hover:shadow-lg ${
-                                  status === "past"
+                                className={`group relative mb-2 p-3 rounded-lg border-2 transition-all hover:scale-105 hover:shadow-lg ${status === "past"
                                     ? "bg-gray-200 border-gray-400 text-gray-700"
                                     : status === "ongoing"
                                       ? "bg-black text-white border-black animate-pulse"
                                       : "bg-white border-black text-black hover:bg-gray-100"
-                                }`}
+                                  }`}
                               >
                                 <div className="space-y-1">
                                   <div className="font-bold text-sm truncate">
@@ -307,13 +306,12 @@ export function CalendarPage() {
                                     })}
                                   </div>
                                   <Badge
-                                    className={`text-xs font-bold px-2 py-1 ${
-                                      status === "past"
+                                    className={`text-xs font-bold px-2 py-1 ${status === "past"
                                         ? "bg-gray-500 text-white"
                                         : status === "ongoing"
                                           ? "bg-white text-black"
                                           : "bg-black text-white"
-                                    }`}
+                                      }`}
                                   >
                                     {status === "ongoing" ? "● LIVE" : status.toUpperCase()}
                                   </Badge>
@@ -379,13 +377,12 @@ export function CalendarPage() {
                         return (
                           <div
                             key={booking?.id}
-                            className={`group p-4 rounded-lg border-2 transition-all hover:scale-105 ${
-                              status === "past"
+                            className={`group p-4 rounded-lg border-2 transition-all hover:scale-105 ${status === "past"
                                 ? "bg-gray-100 border-gray-400 text-gray-700"
                                 : status === "ongoing"
                                   ? "bg-black text-white border-black"
                                   : "bg-white border-black text-black hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 space-y-2">
@@ -403,13 +400,12 @@ export function CalendarPage() {
                                 </div>
                                 <div className="text-sm font-medium">{booking?.requestedBy || "Unknown User"}</div>
                                 <Badge
-                                  className={`text-xs font-bold ${
-                                    status === "past"
+                                  className={`text-xs font-bold ${status === "past"
                                       ? "bg-gray-500 text-white"
                                       : status === "ongoing"
                                         ? "bg-white text-black"
                                         : "bg-black text-white"
-                                  }`}
+                                    }`}
                                 >
                                   {status === "ongoing" ? "● LIVE" : status.toUpperCase()}
                                 </Badge>

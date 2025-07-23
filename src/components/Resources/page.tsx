@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Search, Filter, X } from "lucide-react"
 import { useGetAllResourcesQuery } from "@/redux/api/resourceApi"
 import { Resource } from "@/types/resources"
+import PageLoading from "../shared/PageLoading"
 
 
 // Type definitions
@@ -135,7 +136,7 @@ export function ResourcesPage() {
   if (isLoadingResources) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+       <PageLoading/>
         <span className="ml-2">Loading resources...</span>
       </div>
     )
