@@ -58,7 +58,7 @@ export function CalendarPage() {
   const weekBookings = useMemo(() => {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 7)
-    return bookings.filter((booking) => {
+    return bookings?.filter((booking) => {
       const bookingDate = new Date(booking.startTime)
       return bookingDate >= weekStart && bookingDate < weekEnd
     })
