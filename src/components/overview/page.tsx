@@ -4,11 +4,8 @@
 
 import { Button } from "@/components/ui/button"
 import { CalendarDays, Clock, MapPin, Trash2, TrendingUp, Loader2 } from "lucide-react"
-
-
-
 import { Badge } from "../ui/badge"
-import { useDeleteBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
+import { useDeleteBookingMutation, useGetBookingsQuery, useGetBookingStatsQuery } from "@/redux/api/bookingApi"
 import { formatDateTime } from "@/lib/utils"
 import { Alert, AlertDescription } from "../ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
@@ -17,7 +14,12 @@ export function OverviewPage() {
   const { data: bookings = [], isLoading, error } = useGetBookingsQuery()
   const [deleteBooking, { isLoading: isDeleting }] = useDeleteBookingMutation()
 
-  if (isLoading) {
+  //booking stats
+  const { data: bookingStats, isLoading: isStatsLoading } = useGetBookingStatsQuery({})
+  const { totalBookings, totalResources, totalBookingsToday, ongoingBookingsToday } = bookingStats?.data || {}
+
+
+  if (isLoading || isStatsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -66,7 +68,7 @@ export function OverviewPage() {
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{bookings.length}</div>
+            <div className="text-2xl font-bold">{totalBookings}</div>
             <p className="text-xs text-muted-foreground">All time bookings</p>
           </CardContent>
         </Card>
@@ -77,7 +79,7 @@ export function OverviewPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ongoingBookings.length}</div>
+            <div className="text-2xl font-bold">{ongoingBookingsToday}</div>
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
@@ -88,7 +90,7 @@ export function OverviewPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todayBookings.length}</div>
+            <div className="text-2xl font-bold">{totalBookingsToday}</div>
             <p className="text-xs text-muted-foreground">Bookings today</p>
           </CardContent>
         </Card>
@@ -99,7 +101,7 @@ export function OverviewPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{uniqueResources}</div>
+            <div className="text-2xl font-bold">{totalResources}</div>
             <p className="text-xs text-muted-foreground">Available resources</p>
           </CardContent>
         </Card>
