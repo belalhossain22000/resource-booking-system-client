@@ -127,7 +127,7 @@ export function NewBookingPage() {
       setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (error: any) {
       console.error("Failed to create booking:", error)
-      setErrors(["Failed to create booking. Please try again."])
+      setErrors(error?.data?.message ? [error?.data?.message] : ["Failed to create booking. Please try again."])
     }
   }
 
