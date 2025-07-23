@@ -53,6 +53,11 @@ const data = {
         icon: Plus,
       },
       {
+        title: "Resources-Availability",
+        url: "/resources-availability",
+        icon: MapPin,
+      },
+      {
         title: "Settings",
         url: "/settings",
         icon: Settings,

@@ -18,8 +18,16 @@ export const resourceApi = baseApi.injectEndpoints({
         body: data,
       }),
       invalidatesTags: ["Resource"],
+    }),
+    //resourceAvailability
+    checkResourceAvailability: builder.mutation({
+      query: (data) => ({
+        url: "/resource/availability",
+        method: "POST",
+        body: data,
+      }),
     })
   }),
 });
 
-export const { useGetAllResourcesQuery, useCreateResourceMutation } = resourceApi;
+export const { useGetAllResourcesQuery, useCreateResourceMutation, useCheckResourceAvailabilityMutation } = resourceApi;
