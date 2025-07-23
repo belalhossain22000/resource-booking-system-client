@@ -5,21 +5,30 @@
 import { Button } from "@/components/ui/button"
 import { CalendarDays, Clock, MapPin, Trash2, TrendingUp, Loader2 } from "lucide-react"
 import { Badge } from "../ui/badge"
-import { useDeleteBookingMutation, useGetBookingsQuery, useGetBookingStatsQuery } from "@/redux/api/bookingApi"
+import { useDeleteBookingMutation, useGetBookingsQuery, useGetBookingStatsQuery, useGetUpcomingAndActiveBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 import { formatDateTime } from "@/lib/utils"
 import { Alert, AlertDescription } from "../ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 
 export function OverviewPage() {
-  const { data: bookings = [], isLoading, error } = useGetBookingsQuery()
-  const [deleteBooking, { isLoading: isDeleting }] = useDeleteBookingMutation()
+  const [updateBookingStatus, { isLoading: isCanceling, error }] = useUpdateBookingStatusMutation()
 
   //booking stats
   const { data: bookingStats, isLoading: isStatsLoading } = useGetBookingStatsQuery({})
   const { totalBookings, totalResources, totalBookingsToday, ongoingBookingsToday } = bookingStats?.data || {}
 
+  //useGetUpcomingAndActiveBookingsQuery
+  const { data: upcomingAndActiveBookings, isLoading: isUpcomingAndActiveBookingsLoading } =
+    useGetUpcomingAndActiveBookingsQuery({})
 
-  if (isLoading || isStatsLoading) {
+  const { upcomingBookings, activeBookings: ongoingBookings } = upcomingAndActiveBookings?.data || {
+    upcomingBookings: [],
+    ongoingBookings: [],
+  }
+
+
+
+  if ( isStatsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -36,23 +45,11 @@ export function OverviewPage() {
     )
   }
 
-  const now = new Date()
-  const upcomingBookings = bookings.filter((booking) => new Date(booking.startTime) > now)
-  const ongoingBookings = bookings.filter((booking) => {
-    const start = new Date(booking.startTime)
-    const end = new Date(booking.endTime)
-    return now >= start && now <= end
-  })
-  const todayBookings = bookings.filter((booking) => {
-    const bookingDate = new Date(booking.startTime).toDateString()
-    return bookingDate === now.toDateString()
-  })
 
-  const uniqueResources = new Set(bookings.map((booking) => booking.resource)).size
+  const handleDelete = async (bookingId: string,) => {
 
-  const handleDelete = async (bookingId: string) => {
     try {
-      await deleteBooking(bookingId).unwrap()
+      await updateBookingStatus({ id: bookingId, status: { status: "cancelled" } }).unwrap()
     } catch (error) {
       console.error("Failed to delete booking:", error)
     }
@@ -115,37 +112,37 @@ export function OverviewPage() {
             <CardDescription>Next scheduled bookings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {upcomingBookings.slice(0, 5).map((booking) => (
+            {upcomingBookings?.slice(0, 5).map((booking: any) => (
               <div
                 key={booking.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0 sm:space-x-4"
               >
                 <div className="flex-1 space-y-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">Upcoming</Badge>
-                    <span className="text-sm font-medium truncate">{booking.resource}</span>
+                    <Badge variant="outline">{booking?.status}</Badge>
+                    <span className="text-sm font-medium truncate">{booking?.resource?.name}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    <div className="sm:hidden">{formatDateTime(booking.startTime)}</div>
+                    <div className="sm:hidden">{formatDateTime(booking?.startTime)}</div>
                     <div className="hidden sm:block">
-                      {formatDateTime(booking.startTime)} • {booking.requestedBy}
+                      {formatDateTime(booking?.startTime)} • {booking?.requestedBy}
                     </div>
-                    <div className="sm:hidden">{booking.requestedBy}</div>
+                    <div className="sm:hidden">{booking?.requestedBy}</div>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(booking.id)}
-                  disabled={isDeleting}
-                  className="text-destructive hover:text-destructive shrink-0"
+                  disabled={isCanceling}
+                  className="text-destructive hover:text-destructive shrink-0 text-red-800"
                 >
-                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  <span className="sr-only">Delete booking</span>
+                  {isCanceling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  <span className="">Cancel Booking</span>
                 </Button>
               </div>
             ))}
-            {upcomingBookings.length === 0 && <p className="text-sm text-muted-foreground">No upcoming bookings</p>}
+            {upcomingBookings?.length === 0 && <p className="text-sm text-muted-foreground">No upcoming bookings</p>}
           </CardContent>
         </Card>
 
@@ -155,37 +152,37 @@ export function OverviewPage() {
             <CardDescription>Currently ongoing bookings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {ongoingBookings.map((booking) => (
+            {ongoingBookings?.map((booking: any) => (
               <div
-                key={booking.id}
+                key={booking?.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0 sm:space-x-4"
               >
                 <div className="flex-1 space-y-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="default">Ongoing</Badge>
-                    <span className="text-sm font-medium truncate">{booking.resource}</span>
+                    <Badge variant="default">{booking?.status}</Badge>
+                    <span className="text-sm font-medium truncate">{booking?.resource?.name}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    <div className="sm:hidden">Until {formatDateTime(booking.endTime)}</div>
+                    <div className="sm:hidden">Until {formatDateTime(booking?.endTime)}</div>
                     <div className="hidden sm:block">
-                      Until {formatDateTime(booking.endTime)} • {booking.requestedBy}
+                      Until {formatDateTime(booking?.endTime)} • {booking?.requestedBy}
                     </div>
-                    <div className="sm:hidden">{booking.requestedBy}</div>
+                    <div className="sm:hidden">{booking?.requestedBy}</div>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(booking.id)}
-                  disabled={isDeleting}
-                  className="text-destructive hover:text-destructive shrink-0"
+                  onClick={() => handleDelete(booking?.id)}
+                  disabled={isCanceling}
+                  className="text-destructive hover:text-destructive shrink-0 text-red-500"
                 >
-                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  <span className="sr-only">Delete booking</span>
+                  {isCanceling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  <span className="">Delete booking</span>
                 </Button>
               </div>
             ))}
-            {ongoingBookings.length === 0 && <p className="text-sm text-muted-foreground">No active bookings</p>}
+            {ongoingBookings?.length === 0 && <p className="text-sm text-muted-foreground">No active bookings</p>}
           </CardContent>
         </Card>
       </div>

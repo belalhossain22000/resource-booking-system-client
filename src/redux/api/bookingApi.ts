@@ -11,6 +11,22 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Booking"],
     }),
+    getUpcomingAndActiveBookings: builder.query({
+      query: () => ({
+        url: "/booking/upcoming-ongoing",
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
+
+    updateBookingStatus: builder.mutation({
+      query: ({id,status}) => ({
+        url: `booking/${id}`,
+        method: "PUT",
+        body: status,
+      }),
+      invalidatesTags: ["Booking"],
+    }),
     getBookings: builder.query<Booking[], void>({
       queryFn: async () => {
         return { data: [...mockBookings] };
@@ -62,4 +78,6 @@ export const {
   useDeleteBookingMutation,
   useUpdateBookingMutation,
   useGetBookingStatsQuery,
+  useGetUpcomingAndActiveBookingsQuery,
+  useUpdateBookingStatusMutation
 } = bookingApi;
