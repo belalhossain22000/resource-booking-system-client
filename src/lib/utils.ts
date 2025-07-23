@@ -53,7 +53,7 @@ export const formatDuration = (startTime: string, endTime: string) => {
 
 export const validateBooking = (
   formData: { resource: string; startTime: string; endTime: string; requestedBy: string },
-  existingBookings: Booking[],
+  existingBookings:any,
   bufferMinutes = 10,
   maxDurationHours = 2,
 ): string[] => {
@@ -93,7 +93,7 @@ export const validateBooking = (
 
     // Conflict detection with buffer
     if (formData.resource) {
-      const resourceBookings = existingBookings.filter((booking) => booking.resource === formData.resource)
+      const resourceBookings = existingBookings.filter((booking:any) => booking.resource === formData.resource)
 
       for (const booking of resourceBookings) {
         const existingStart = new Date(booking.startTime)

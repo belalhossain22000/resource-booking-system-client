@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,24 +9,72 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarDays, Clock, User, MapPin, AlertTriangle, CheckCircle, Loader2, Plus } from "lucide-react"
-
 import { validateBooking } from "@/lib/utils"
 import { BOOKING_RULES } from "@/constants/resources"
 import { useGetAllResourcesQuery } from "@/redux/api/resourceApi"
 import { useCreateBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
 
+// Type definitions
+interface Resource {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface Booking {
+  id: string
+  resourceId: string
+  startTime: string
+  endTime: string
+  requestedBy: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  resource: Resource
+}
+
+interface BookingsResponse {
+  success: boolean
+  message: string
+  data: {
+    [resourceName: string]: Booking[]
+  }
+}
+
+interface ResourcesResponse {
+  success: boolean
+  message: string
+  data: {
+    data: Resource[]
+  }
+}
 
 export function NewBookingPage() {
-  const { data: resourcesResponse, isLoading: isLoadingResources } = useGetAllResourcesQuery({})
-  const { data = [] } = useGetBookingsQuery({})
+  const { data: resourcesResponse, isLoading: isLoadingResources } = useGetAllResourcesQuery({}) as {
+    data: ResourcesResponse | undefined
+    isLoading: boolean
+  }
+
+  const { data: bookingsResponse } = useGetBookingsQuery({}) as {
+    data: BookingsResponse | undefined
+  }
 
   const [createBooking, { isLoading: isSubmitting }] = useCreateBookingMutation()
 
-  // Extract resources from API response
+  // Extract resources from API response with optional chaining
   const resources = resourcesResponse?.data?.data || []
 
-  // Extract existing bookings from API response
-  const existingBookings = data?.data || []
+  // Extract and flatten existing bookings from API response
+  const existingBookings = useMemo(() => {
+    if (!bookingsResponse?.data) return []
+
+    const allBookings: Booking[] = []
+    Object.values(bookingsResponse?.data || {}).forEach((resourceBookings) => {
+      allBookings.push(...(resourceBookings || []))
+    })
+    return allBookings
+  }, [bookingsResponse])
 
   const [formData, setFormData] = useState({
     resource: "",
@@ -35,6 +83,7 @@ export function NewBookingPage() {
     endTime: "",
     requestedBy: "",
   })
+
   const [errors, setErrors] = useState<string[]>([])
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
@@ -45,9 +94,10 @@ export function NewBookingPage() {
     const validationErrors = validateBooking(
       formData,
       existingBookings,
-      BOOKING_RULES.BUFFER_MINUTES,
-      BOOKING_RULES.MAX_DURATION_HOURS,
+      BOOKING_RULES?.BUFFER_MINUTES || 15,
+      BOOKING_RULES?.MAX_DURATION_HOURS || 8,
     )
+
     setErrors(validationErrors)
 
     if (validationErrors.length > 0) {
@@ -62,7 +112,8 @@ export function NewBookingPage() {
         endTime: new Date(formData.endTime).toISOString(),
         requestedBy: formData.requestedBy,
       }
-      console.log(data);
+
+      console.log(data)
       await createBooking(data).unwrap()
 
       // Reset form
@@ -78,7 +129,7 @@ export function NewBookingPage() {
 
       // Hide success message after 3 seconds
       setTimeout(() => setSubmitSuccess(false), 3000)
-    } catch (error:any) {
+    } catch (error: any) {
       console.error("Failed to create booking:", error)
       setErrors(["Failed to create booking. Please try again."])
     }
@@ -86,7 +137,6 @@ export function NewBookingPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-
     // Clear errors when user starts typing
     if (errors.length > 0) {
       setErrors([])
@@ -94,13 +144,12 @@ export function NewBookingPage() {
   }
 
   const handleResourceChange = (resourceName: string) => {
-    const selectedResource = resources.find((r: any) => r.name === resourceName)
+    const selectedResource = resources.find((r: any) => r?.name === resourceName)
     setFormData((prev) => ({
       ...prev,
       resource: resourceName,
       resourceId: selectedResource?.id || "",
     }))
-
     // Clear errors when user starts typing
     if (errors.length > 0) {
       setErrors([])
@@ -117,8 +166,8 @@ export function NewBookingPage() {
         duration: durationMinutes,
         formatted: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`,
         isValid:
-          durationMinutes >= BOOKING_RULES.MIN_DURATION_MINUTES &&
-          durationMinutes <= BOOKING_RULES.MAX_DURATION_HOURS * 60,
+          durationMinutes >= (BOOKING_RULES?.MIN_DURATION_MINUTES || 30) &&
+          durationMinutes <= (BOOKING_RULES?.MAX_DURATION_HOURS || 8) * 60,
       }
     }
     return null
@@ -144,7 +193,8 @@ export function NewBookingPage() {
         </div>
         <h1 className="text-4xl font-bold text-black">Create New Booking</h1>
         <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-          Reserve your space with our simple booking system. Maximum duration: {BOOKING_RULES.MAX_DURATION_HOURS} hours
+          Reserve your space with our simple booking system. Maximum duration: {BOOKING_RULES?.MAX_DURATION_HOURS || 8}{" "}
+          hours
         </p>
       </div>
 
@@ -181,8 +231,8 @@ export function NewBookingPage() {
             Booking Details
           </CardTitle>
           <CardDescription className="text-gray-300">
-            Fill in the information below to create your booking. A {BOOKING_RULES.BUFFER_MINUTES}-minute buffer will be
-            automatically applied.
+            Fill in the information below to create your booking. A {BOOKING_RULES?.BUFFER_MINUTES || 15}-minute buffer
+            will be automatically applied.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-8 space-y-8 bg-white">
@@ -201,11 +251,11 @@ export function NewBookingPage() {
                   <SelectContent className="border-2 border-black bg-white">
                     {resources.map((resource: any) => (
                       <SelectItem
-                        key={resource.id}
-                        value={resource.name}
+                        key={resource?.id}
+                        value={resource?.name || ""}
                         className="text-base py-3 text-black hover:bg-gray-100"
                       >
-                        {resource.name}
+                        {resource?.name || "Unknown Resource"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -260,8 +310,9 @@ export function NewBookingPage() {
             {/* Duration Info */}
             {durationInfo && (
               <Card
-                className={`border-2 transition-all duration-300 ${durationInfo.isValid ? "border-black bg-white" : "border-black bg-gray-100"
-                  }`}
+                className={`border-2 transition-all duration-300 ${
+                  durationInfo.isValid ? "border-black bg-white" : "border-black bg-gray-100"
+                }`}
               >
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4 text-lg font-semibold text-black">
@@ -272,8 +323,8 @@ export function NewBookingPage() {
                   </div>
                   <p className="text-sm mt-3 text-gray-700">
                     {durationInfo.isValid
-                      ? `Perfect! A ${BOOKING_RULES.BUFFER_MINUTES}-minute buffer will be automatically applied before and after your booking.`
-                      : `Duration must be between ${BOOKING_RULES.MIN_DURATION_MINUTES} minutes and ${BOOKING_RULES.MAX_DURATION_HOURS} hours.`}
+                      ? `Perfect! A ${BOOKING_RULES?.BUFFER_MINUTES || 15}-minute buffer will be automatically applied before and after your booking.`
+                      : `Duration must be between ${BOOKING_RULES?.MIN_DURATION_MINUTES || 30} minutes and ${BOOKING_RULES?.MAX_DURATION_HOURS || 8} hours.`}
                   </p>
                 </CardContent>
               </Card>

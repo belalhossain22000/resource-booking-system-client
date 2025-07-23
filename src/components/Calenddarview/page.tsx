@@ -8,12 +8,18 @@ import { ChevronLeft, ChevronRight, Trash2, Loader2, Calendar, Clock } from "luc
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 
-
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8) // 8 AM to 9 PM
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 // Type definitions
+interface Resource {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
 interface Booking {
   id: string
   resourceId: string
@@ -23,21 +29,40 @@ interface Booking {
   status: string
   createdAt: string
   updatedAt: string
-  resource: {
-    id: string
-    name: string
-    createdAt: string
-    updatedAt: string
+  resource: Resource
+}
+
+interface BookingsResponse {
+  success: boolean
+  message: string
+  data: {
+    [resourceName: string]: Booking[]
   }
 }
 
 export function CalendarPage() {
-  const { data: bookingsResponse, isLoading, error } = useGetBookingsQuery({})
-   const [updateBookingStatus, { isLoading: isCanceling }] = useUpdateBookingStatusMutation()
+  const {
+    data: bookingsResponse,
+    isLoading,
+    error,
+  } = useGetBookingsQuery({}) as {
+    data: BookingsResponse | undefined
+    isLoading: boolean
+    error: any
+  }
+  const [updateBookingStatus, { isLoading: isCanceling }] = useUpdateBookingStatusMutation()
   const [currentWeek, setCurrentWeek] = useState(new Date())
 
-  // Extract bookings array from API response
-  const bookings: Booking[] = bookingsResponse?.data || []
+  // Extract and flatten bookings array from API response
+  const bookings: Booking[] = useMemo(() => {
+    if (!bookingsResponse?.data) return []
+
+    const allBookings: Booking[] = []
+    Object.values(bookingsResponse?.data || {}).forEach((resourceBookings) => {
+      allBookings.push(...(resourceBookings || []))
+    })
+    return allBookings
+  }, [bookingsResponse])
 
   // Get the start of the current week (Monday)
   const getWeekStart = (date: Date) => {
@@ -58,10 +83,12 @@ export function CalendarPage() {
   const weekBookings = useMemo(() => {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 7)
-    return bookings?.filter((booking) => {
-      const bookingDate = new Date(booking.startTime)
-      return bookingDate >= weekStart && bookingDate < weekEnd
-    })
+    return (
+      bookings?.filter((booking) => {
+        const bookingDate = new Date(booking?.startTime || "")
+        return bookingDate >= weekStart && bookingDate < weekEnd
+      }) || []
+    )
   }, [bookings, weekStart])
 
   // Group bookings by day and hour
@@ -72,9 +99,9 @@ export function CalendarPage() {
       grouped[dayKey] = {}
       HOURS.forEach((hour) => {
         grouped[dayKey][hour] = weekBookings.filter((booking) => {
-          const bookingDate = new Date(booking.startTime)
-          const bookingStartHour = bookingDate.getHours()
-          const bookingEndHour = new Date(booking.endTime).getHours()
+          const bookingDate = new Date(booking?.startTime || "")
+          const bookingStartHour = bookingDate?.getHours()
+          const bookingEndHour = new Date(booking?.endTime || "")?.getHours()
           return bookingDate.toDateString() === dayKey && bookingStartHour <= hour && bookingEndHour > hour
         })
       })
@@ -88,7 +115,7 @@ export function CalendarPage() {
     weekDays.forEach((day) => {
       const dayKey = day.toDateString()
       grouped[dayKey] = weekBookings.filter((booking) => {
-        const bookingDate = new Date(booking.startTime)
+        const bookingDate = new Date(booking?.startTime || "")
         return bookingDate.toDateString() === dayKey
       })
     })
@@ -121,8 +148,8 @@ export function CalendarPage() {
 
   const getBookingStatus = (startTime: string, endTime: string) => {
     const now = new Date()
-    const start = new Date(startTime)
-    const end = new Date(endTime)
+    const start = new Date(startTime || "")
+    const end = new Date(endTime || "")
     if (now > end) return "past"
     if (now >= start && now <= end) return "ongoing"
     return "upcoming"
@@ -130,7 +157,10 @@ export function CalendarPage() {
 
   const handleDelete = async (bookingId: string) => {
     try {
-      await updateBookingStatus({id:bookingId, status: { status: "cancelled" } }).unwrap()
+      await updateBookingStatus({
+        id: bookingId,
+        status: { status: "cancelled" },
+      }).unwrap()
     } catch (error) {
       console.error("Failed to delete booking:", error)
     }
@@ -251,10 +281,10 @@ export function CalendarPage() {
                           }`}
                         >
                           {hourBookings.map((booking) => {
-                            const status = getBookingStatus(booking.startTime, booking.endTime)
+                            const status = getBookingStatus(booking?.startTime || "", booking?.endTime || "")
                             return (
                               <div
-                                key={booking.id}
+                                key={booking?.id}
                                 className={`group relative mb-2 p-3 rounded-lg border-2 transition-all hover:scale-105 hover:shadow-lg ${
                                   status === "past"
                                     ? "bg-gray-200 border-gray-400 text-gray-700"
@@ -264,10 +294,14 @@ export function CalendarPage() {
                                 }`}
                               >
                                 <div className="space-y-1">
-                                  <div className="font-bold text-sm truncate">{booking.resource.name}</div>
-                                  <div className="text-xs font-medium truncate">{booking.requestedBy}</div>
+                                  <div className="font-bold text-sm truncate">
+                                    {booking?.resource?.name || "Unknown Resource"}
+                                  </div>
+                                  <div className="text-xs font-medium truncate">
+                                    {booking?.requestedBy || "Unknown User"}
+                                  </div>
                                   <div className="text-xs">
-                                    {new Date(booking.startTime).toLocaleTimeString("en-US", {
+                                    {new Date(booking?.startTime || "").toLocaleTimeString("en-US", {
                                       hour: "numeric",
                                       minute: "2-digit",
                                     })}
@@ -288,7 +322,7 @@ export function CalendarPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDelete(booking.id)}
+                                  onClick={() => handleDelete(booking?.id || "")}
                                   disabled={isCanceling}
                                   className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all bg-red-500 hover:bg-red-600 text-white rounded-full"
                                 >
@@ -341,10 +375,10 @@ export function CalendarPage() {
                       <p className="text-center text-gray-500 py-6">No bookings for this day</p>
                     ) : (
                       dayBookings.map((booking) => {
-                        const status = getBookingStatus(booking.startTime, booking.endTime)
+                        const status = getBookingStatus(booking?.startTime || "", booking?.endTime || "")
                         return (
                           <div
-                            key={booking.id}
+                            key={booking?.id}
                             className={`group p-4 rounded-lg border-2 transition-all hover:scale-105 ${
                               status === "past"
                                 ? "bg-gray-100 border-gray-400 text-gray-700"
@@ -355,19 +389,19 @@ export function CalendarPage() {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 space-y-2">
-                                <div className="font-bold">{booking.resource.name}</div>
+                                <div className="font-bold">{booking?.resource?.name || "Unknown Resource"}</div>
                                 <div className="text-sm">
-                                  {new Date(booking.startTime).toLocaleTimeString("en-US", {
+                                  {new Date(booking?.startTime || "").toLocaleTimeString("en-US", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                   })}{" "}
                                   -{" "}
-                                  {new Date(booking.endTime).toLocaleTimeString("en-US", {
+                                  {new Date(booking?.endTime || "").toLocaleTimeString("en-US", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                   })}
                                 </div>
-                                <div className="text-sm font-medium">{booking.requestedBy}</div>
+                                <div className="text-sm font-medium">{booking?.requestedBy || "Unknown User"}</div>
                                 <Badge
                                   className={`text-xs font-bold ${
                                     status === "past"
@@ -383,7 +417,7 @@ export function CalendarPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDelete(booking.id)}
+                                onClick={() => handleDelete(booking?.id || "")}
                                 disabled={isCanceling}
                                 className="opacity-0 group-hover:opacity-100 transition-all bg-red-500 hover:bg-red-600 text-white rounded-full"
                               >
