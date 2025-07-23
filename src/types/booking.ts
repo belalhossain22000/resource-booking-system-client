@@ -8,7 +8,7 @@ export interface Booking {
   }
   
   export interface CreateBookingRequest {
-    resource: string
+    resourceId: string
     startTime: string
     endTime: string
     requestedBy: string

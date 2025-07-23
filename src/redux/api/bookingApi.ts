@@ -27,7 +27,7 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
-    
+
     getBookings: builder.query({
       query: () => ({
         url: "/booking",
@@ -37,16 +37,13 @@ export const bookingApi = baseApi.injectEndpoints({
     }),
 
     createBooking: builder.mutation<Booking, CreateBookingRequest>({
-      queryFn: async (booking) => {
-        const newBooking: Booking = {
-          ...booking,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        };
-        mockBookings.push(newBooking);
-        return { data: newBooking };
-      },
+      query: (data) => ({
+        url: `/booking/create`,
+        method: "POST",
+        body: data,
+      }),
       invalidatesTags: ["Booking"],
+     
     }),
     deleteBooking: builder.mutation<{ message: string }, string>({
       queryFn: async (id) => {

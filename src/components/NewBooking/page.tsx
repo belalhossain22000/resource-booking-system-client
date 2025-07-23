@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,17 +9,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarDays, Clock, User, MapPin, AlertTriangle, CheckCircle, Loader2, Plus } from "lucide-react"
-import { useCreateBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
+
 import { validateBooking } from "@/lib/utils"
-import { BOOKING_RULES, RESOURCES } from "@/constants/resources"
+import { BOOKING_RULES } from "@/constants/resources"
+import { useGetAllResourcesQuery } from "@/redux/api/resourceApi"
+import { useCreateBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
 
 
 export function NewBookingPage() {
-  const { data: existingBookings = [] } = useGetBookingsQuery()
+  const { data: resourcesResponse, isLoading: isLoadingResources, error } = useGetAllResourcesQuery({})
+  const { data = [] } = useGetBookingsQuery({})
+
   const [createBooking, { isLoading: isSubmitting }] = useCreateBookingMutation()
+
+  // Extract resources from API response
+  const resources = resourcesResponse?.data?.data || []
+
+  // Extract existing bookings from API response
+  const existingBookings = data?.data || []
 
   const [formData, setFormData] = useState({
     resource: "",
+    resourceId: "",
     startTime: "",
     endTime: "",
     requestedBy: "",
@@ -45,28 +55,52 @@ export function NewBookingPage() {
     }
 
     try {
-      await createBooking(formData).unwrap()
+      // Create booking with resourceId instead of resource name
+      const data = {
+        resourceId: formData.resourceId,
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+        requestedBy: formData.requestedBy,
+      }
+      console.log(data);
+      await createBooking(data).unwrap()
 
       // Reset form
       setFormData({
         resource: "",
+        resourceId: "",
         startTime: "",
         endTime: "",
         requestedBy: "",
       })
-
       setSubmitSuccess(true)
       setErrors([])
 
       // Hide success message after 3 seconds
       setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (error) {
+      console
       setErrors(["Failed to create booking. Please try again."])
     }
   }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+
+    // Clear errors when user starts typing
+    if (errors.length > 0) {
+      setErrors([])
+    }
+  }
+
+  const handleResourceChange = (resourceName: string) => {
+    const selectedResource = resources.find((r: any) => r.name === resourceName)
+    setFormData((prev) => ({
+      ...prev,
+      resource: resourceName,
+      resourceId: selectedResource?.id || "",
+    }))
+
     // Clear errors when user starts typing
     if (errors.length > 0) {
       setErrors([])
@@ -79,7 +113,6 @@ export function NewBookingPage() {
         (new Date(formData.endTime).getTime() - new Date(formData.startTime).getTime()) / (1000 * 60)
       const hours = Math.floor(durationMinutes / 60)
       const minutes = durationMinutes % 60
-
       return {
         duration: durationMinutes,
         formatted: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`,
@@ -92,6 +125,15 @@ export function NewBookingPage() {
   }
 
   const durationInfo = getDurationInfo()
+
+  if (isLoadingResources) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading resources...</span>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 p-6">
@@ -143,34 +185,32 @@ export function NewBookingPage() {
             automatically applied.
           </CardDescription>
         </CardHeader>
-
         <CardContent className="p-8 space-y-8 bg-white">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Resource and Name Row */}
             <div className="grid gap-8 md:grid-cols-2">
-              <div className="space-y-3 ">
+              <div className="space-y-3">
                 <Label htmlFor="resource" className="text-base font-semibold text-black flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   Resource
                 </Label>
-                <Select  value={formData.resource} onValueChange={(value) => handleInputChange("resource", value)} >
+                <Select value={formData.resource} onValueChange={handleResourceChange}>
                   <SelectTrigger className="w-full h-12 text-base border-2 border-black focus:border-black transition-colors bg-white">
                     <SelectValue placeholder="Select a resource" />
                   </SelectTrigger>
                   <SelectContent className="border-2 border-black bg-white">
-                    {RESOURCES.map((resource) => (
+                    {resources.map((resource: any) => (
                       <SelectItem
-                        key={resource}
-                        value={resource}
+                        key={resource.id}
+                        value={resource.name}
                         className="text-base py-3 text-black hover:bg-gray-100"
                       >
-                        {resource}
+                        {resource.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-3">
                 <Label htmlFor="requestedBy" className="text-base font-semibold text-black flex items-center gap-2">
                   <User className="h-4 w-4" />
@@ -202,7 +242,6 @@ export function NewBookingPage() {
                   className="h-12 text-base border-2 border-black focus:border-black transition-colors bg-white"
                 />
               </div>
-
               <div className="space-y-3">
                 <Label htmlFor="endTime" className="text-base font-semibold text-black flex items-center gap-2">
                   <Clock className="h-4 w-4" />
@@ -221,9 +260,8 @@ export function NewBookingPage() {
             {/* Duration Info */}
             {durationInfo && (
               <Card
-                className={`border-2 transition-all duration-300 ${
-                  durationInfo.isValid ? "border-black bg-white" : "border-black bg-gray-100"
-                }`}
+                className={`border-2 transition-all duration-300 ${durationInfo.isValid ? "border-black bg-white" : "border-black bg-gray-100"
+                  }`}
               >
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4 text-lg font-semibold text-black">
@@ -274,7 +312,6 @@ export function NewBookingPage() {
             <p className="text-gray-600">Create bookings in under a minute</p>
           </CardContent>
         </Card>
-
         <Card className="border-2 border-black hover:bg-gray-50 transition-colors duration-200">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-4">
@@ -284,7 +321,6 @@ export function NewBookingPage() {
             <p className="text-gray-600">Automatic validation prevents overlaps</p>
           </CardContent>
         </Card>
-
         <Card className="border-2 border-black hover:bg-gray-50 transition-colors duration-200">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-4">
@@ -298,3 +334,5 @@ export function NewBookingPage() {
     </div>
   )
 }
+
+export default NewBookingPage
