@@ -8,15 +8,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Clock, MapPin, Trash2, Filter, Search, Loader2 } from "lucide-react"
-
-
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useDeleteBookingMutation, useGetBookingsQuery } from "@/redux/api/bookingApi"
+import { useDeleteBookingMutation, useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 import { formatDateTime, formatDuration, getBookingStatus, getStatusColor } from "@/lib/utils"
 
+// Type definitions based on your API response
+interface Resource {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface Booking {
+  id: string
+  resourceId: string
+  startTime: string
+  endTime: string
+  requestedBy: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  resource: Resource
+}
+
+interface BookingsResponse {
+  success: boolean
+  message: string
+  data: Booking[]
+}
+
 export function BookingsPage() {
-  const { data: bookings = [], isLoading, error } = useGetBookingsQuery()
-  const [deleteBooking, { isLoading: isDeleting }] = useDeleteBookingMutation()
+  const { data: bookingsResponse, isLoading, error } = useGetBookingsQuery({})
+  const [updateBookingStatus, { isLoading: isCanceling,  }] = useUpdateBookingStatusMutation()
 
   const [resourceFilter, setResourceFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("")
@@ -24,18 +48,21 @@ export function BookingsPage() {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showFilters, setShowFilters] = useState(false)
 
+  // Extract bookings array from API response
+  const bookings: Booking[] = bookingsResponse?.data || []
+
   // Get unique resources for filter dropdown
   const uniqueResources = useMemo(() => {
-    return Array.from(new Set(bookings.map((booking) => booking.resource)))
+    return Array.from(new Set(bookings.map((booking) => booking.resource.name)))
   }, [bookings])
 
   // Filter and sort bookings
   const filteredAndSortedBookings = useMemo(() => {
-    let filtered =[...bookings]
+    let filtered = [...bookings]
 
     // Filter by resource
     if (resourceFilter !== "all") {
-      filtered = filtered.filter((booking) => booking.resource === resourceFilter)
+      filtered = filtered.filter((booking) => booking.resource.name === resourceFilter)
     }
 
     // Filter by date
@@ -60,7 +87,7 @@ export function BookingsPage() {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (booking) =>
-          booking.resource.toLowerCase().includes(query) || booking.requestedBy.toLowerCase().includes(query),
+          booking.resource.name.toLowerCase().includes(query) || booking.requestedBy.toLowerCase().includes(query),
       )
     }
 
@@ -81,7 +108,7 @@ export function BookingsPage() {
 
   const handleDelete = async (bookingId: string) => {
     try {
-      await deleteBooking(bookingId).unwrap()
+     await updateBookingStatus({ id: bookingId, status: { status: "cancelled" } }).unwrap()
     } catch (error) {
       console.error("Failed to delete booking:", error)
     }
@@ -114,7 +141,6 @@ export function BookingsPage() {
             Manage and view all resource bookings ({filteredAndSortedBookings.length} total)
           </p>
         </div>
-
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -153,12 +179,10 @@ export function BookingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>Date</Label>
                 <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
               </div>
-
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -173,7 +197,6 @@ export function BookingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="flex items-end">
                 <Button variant="outline" onClick={clearAllFilters} className="w-full bg-transparent">
                   Clear All
@@ -195,7 +218,6 @@ export function BookingsPage() {
         <div className="space-y-4">
           {filteredAndSortedBookings.map((booking) => {
             const status = getBookingStatus(booking.startTime, booking.endTime)
-
             return (
               <Card key={booking.id}>
                 <CardContent className="p-6">
@@ -205,10 +227,9 @@ export function BookingsPage() {
                         <Badge variant={getStatusColor(status)}>{status}</Badge>
                         <div className="flex items-center gap-2 text-lg font-semibold">
                           <MapPin className="h-4 w-4" />
-                          {booking.resource}
+                          {booking.resource.name}
                         </div>
                       </div>
-
                       <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-3">
                         <div className="flex items-center gap-2">
                           <CalendarDays className="h-4 w-4" />
@@ -227,15 +248,14 @@ export function BookingsPage() {
                         </div>
                       </div>
                     </div>
-
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleDelete(booking.id)}
-                      disabled={isDeleting}
+                      disabled={isCanceling}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
-                      {isDeleting ? (
+                      {isCanceling ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
                         <Trash2 className="h-4 w-4 mr-2" />

@@ -27,12 +27,15 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
-    getBookings: builder.query<Booking[], void>({
-      queryFn: async () => {
-        return { data: [...mockBookings] };
-      },
+    
+    getBookings: builder.query({
+      query: () => ({
+        url: "/booking",
+        method: "GET",
+      }),
       providesTags: ["Booking"],
     }),
+
     createBooking: builder.mutation<Booking, CreateBookingRequest>({
       queryFn: async (booking) => {
         const newBooking: Booking = {
