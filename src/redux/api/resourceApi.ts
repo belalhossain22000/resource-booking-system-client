@@ -1,5 +1,6 @@
 import { baseApi } from "@/redux/api/baseApi";
 
+
 export const resourceApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getAllResources: builder.query({
@@ -9,7 +10,16 @@ export const resourceApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Resource"],
     }),
+    //createResource
+    createResource: builder.mutation({
+      query: (data) => ({
+        url: "/resource/create",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Resource"],
+    })
   }),
 });
 
-export const { useGetAllResourcesQuery } = resourceApi;
+export const { useGetAllResourcesQuery, useCreateResourceMutation } = resourceApi;

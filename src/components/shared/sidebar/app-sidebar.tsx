@@ -48,6 +48,11 @@ const data = {
         icon: Plus,
       },
       {
+        title: "New Resource",
+        url: "/new-resource",
+        icon: Plus,
+      },
+      {
         title: "Settings",
         url: "/settings",
         icon: Settings,
