@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Clock, MapPin, Trash2, Filter, Search, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {  useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
+import { useGetBookingsQuery, useUpdateBookingStatusMutation } from "@/redux/api/bookingApi"
 import { formatDateTime, formatDuration, getBookingStatus, getStatusColor } from "@/lib/utils"
 
 // Type definitions based on your API response
@@ -32,11 +32,25 @@ interface Booking {
   resource: Resource
 }
 
-
+interface BookingsResponse {
+  success: boolean
+  message: string
+  data: {
+    [resourceName: string]: Booking[]
+  }
+}
 
 export function BookingsPage() {
-  const { data: bookingsResponse, isLoading, error } = useGetBookingsQuery({})
-  const [updateBookingStatus, { isLoading: isCanceling,  }] = useUpdateBookingStatusMutation()
+  const {
+    data: bookingsResponse,
+    isLoading,
+    error,
+  } = useGetBookingsQuery({}) as {
+    data: BookingsResponse | undefined
+    isLoading: boolean
+    error: any
+  }
+  const [updateBookingStatus, { isLoading: isCanceling }] = useUpdateBookingStatusMutation()
 
   const [resourceFilter, setResourceFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("")
@@ -44,12 +58,20 @@ export function BookingsPage() {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showFilters, setShowFilters] = useState(false)
 
-  // Extract bookings array from API response
-  const bookings: Booking[] = bookingsResponse?.data || []
+  // Extract and flatten bookings array from API response
+  const bookings: Booking[] = useMemo(() => {
+    if (!bookingsResponse?.data) return []
+
+    const allBookings: Booking[] = []
+    Object.values(bookingsResponse?.data || {}).forEach((resourceBookings) => {
+      allBookings.push(...(resourceBookings || []))
+    })
+    return allBookings
+  }, [bookingsResponse])
 
   // Get unique resources for filter dropdown
   const uniqueResources = useMemo(() => {
-    return Array.from(new Set(bookings.map((booking) => booking.resource.name)))
+    return Array.from(new Set(bookings.map((booking) => booking?.resource?.name).filter(Boolean)))
   }, [bookings])
 
   // Filter and sort bookings
@@ -58,14 +80,14 @@ export function BookingsPage() {
 
     // Filter by resource
     if (resourceFilter !== "all") {
-      filtered = filtered.filter((booking) => booking.resource.name === resourceFilter)
+      filtered = filtered.filter((booking) => booking?.resource?.name === resourceFilter)
     }
 
     // Filter by date
     if (dateFilter) {
       const filterDate = new Date(dateFilter).toDateString()
       filtered = filtered.filter((booking) => {
-        const bookingDate = new Date(booking.startTime).toDateString()
+        const bookingDate = new Date(booking?.startTime || "").toDateString()
         return bookingDate === filterDate
       })
     }
@@ -73,7 +95,7 @@ export function BookingsPage() {
     // Filter by status
     if (statusFilter !== "all") {
       filtered = filtered.filter((booking) => {
-        const status = getBookingStatus(booking.startTime, booking.endTime)
+        const status = getBookingStatus(booking?.startTime || "", booking?.endTime || "")
         return status === statusFilter
       })
     }
@@ -83,17 +105,35 @@ export function BookingsPage() {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (booking) =>
-          booking.resource.name.toLowerCase().includes(query) || booking.requestedBy.toLowerCase().includes(query),
+          booking?.resource?.name?.toLowerCase()?.includes(query) ||
+          booking?.requestedBy?.toLowerCase()?.includes(query),
       )
     }
 
     // Sort by start time (upcoming first)
     return filtered.sort((a, b) => {
-      const aStart = new Date(a.startTime)
-      const bStart = new Date(b.startTime)
+      const aStart = new Date(a?.startTime || "")
+      const bStart = new Date(b?.startTime || "")
       return aStart.getTime() - bStart.getTime()
     })
   }, [bookings, resourceFilter, dateFilter, statusFilter, searchQuery])
+
+  // Group filtered bookings by resource for display
+  const groupedBookings = useMemo(() => {
+    const grouped: { [resourceName: string]: Booking[] } = {}
+
+    filteredAndSortedBookings.forEach((booking) => {
+      const resourceName = booking?.resource?.name
+      if (resourceName && !grouped[resourceName]) {
+        grouped[resourceName] = []
+      }
+      if (resourceName) {
+        grouped[resourceName].push(booking)
+      }
+    })
+
+    return grouped
+  }, [filteredAndSortedBookings])
 
   const clearAllFilters = () => {
     setResourceFilter("all")
@@ -104,7 +144,7 @@ export function BookingsPage() {
 
   const handleDelete = async (bookingId: string) => {
     try {
-     await updateBookingStatus({ id: bookingId, status: { status: "cancelled" } }).unwrap()
+      await updateBookingStatus({ id: bookingId, status: { status: "cancelled" } }).unwrap()
     } catch (error) {
       console.error("Failed to delete booking:", error)
     }
@@ -203,66 +243,78 @@ export function BookingsPage() {
         </Card>
       )}
 
-      {/* Bookings List */}
-      {filteredAndSortedBookings.length === 0 ? (
+      {/* Bookings List - Grouped by Resource */}
+      {Object.keys(groupedBookings).length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">No bookings found matching your criteria.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredAndSortedBookings.map((booking) => {
-            const status = getBookingStatus(booking.startTime, booking.endTime)
-            return (
-              <Card key={booking.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={getStatusColor(status)}>{status}</Badge>
-                        <div className="flex items-center gap-2 text-lg font-semibold">
-                          <MapPin className="h-4 w-4" />
-                          {booking.resource.name}
+        <div className="space-y-6">
+          {Object.entries(groupedBookings).map(([resourceName, resourceBookings]) => (
+            <div key={resourceName} className="space-y-4">
+              {/* Resource Header */}
+              <div className="flex items-center gap-3 pb-2 border-b">
+                <MapPin className="h-5 w-5 text-primary" />
+                <h3 className="text-xl font-semibold">{resourceName}</h3>
+                <Badge variant="secondary" className="ml-auto">
+                  {resourceBookings.length} booking{resourceBookings.length !== 1 ? "s" : ""}
+                </Badge>
+              </div>
+
+              {/* Bookings for this resource */}
+              <div className="space-y-3 pl-8">
+                {resourceBookings.map((booking) => {
+                  const status = getBookingStatus(booking?.startTime || "", booking?.endTime || "")
+                  return (
+                    <Card key={booking.id} className="border-l-4 border-l-primary/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-3">
+                              <Badge variant={getStatusColor(status)}>{status}</Badge>
+                            </div>
+                            <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+                              <div className="flex items-center gap-2">
+                                <CalendarDays className="h-4 w-4" />
+                                <span>{formatDateTime(booking?.startTime || "")}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                <span>
+                                  {formatDuration(booking?.startTime || "", booking?.endTime || "")}
+                                  <span className="ml-1">(until {formatDateTime(booking?.endTime || "")})</span>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Requested by:</span>
+                                <span>{booking?.requestedBy || "Unknown"}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(booking?.id || "")}
+                            disabled={isCanceling}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            {isCanceling ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 mr-2" />
+                            )}
+                            Cancel
+                          </Button>
                         </div>
-                      </div>
-                      <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-3">
-                        <div className="flex items-center gap-2">
-                          <CalendarDays className="h-4 w-4" />
-                          <span>{formatDateTime(booking.startTime)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            {formatDuration(booking.startTime, booking.endTime)}
-                            <span className="ml-1">(until {formatDateTime(booking.endTime)})</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Requested by:</span>
-                          <span>{booking.requestedBy}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(booking.id)}
-                      disabled={isCanceling}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      {isCanceling ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
-                      )}
-                      Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

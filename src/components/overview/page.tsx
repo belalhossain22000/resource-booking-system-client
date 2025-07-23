@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "../ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 
 export function OverviewPage() {
+  
   const [updateBookingStatus, { isLoading: isCanceling, error }] = useUpdateBookingStatusMutation()
 
   //booking stats
@@ -28,7 +29,7 @@ export function OverviewPage() {
 
 
 
-  if ( isStatsLoading) {
+  if ( isStatsLoading || isUpcomingAndActiveBookingsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -112,7 +113,7 @@ export function OverviewPage() {
             <CardDescription>Next scheduled bookings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {upcomingBookings?.slice(0, 5).map((booking: any) => (
+            {upcomingBookings?.slice(0, 10).map((booking: any) => (
               <div
                 key={booking.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0 sm:space-x-4"
