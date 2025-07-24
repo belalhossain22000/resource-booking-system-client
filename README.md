@@ -2,6 +2,8 @@
 
 ## 📁 Project Organization
 
+## Live Link: https://resouce-management-frontend.vercel.app
+
 \`\`\`
 src/
 ├── app/                          # Next.js App Router
